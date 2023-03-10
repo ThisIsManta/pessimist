@@ -23,6 +23,12 @@ it('returns the specified flags among the defaults and the argument list', () =>
 		})
 })
 
+it('does not return "--"', () => {
+	expect(parseArguments(['--'], {})).toStrictEqual({
+		length: 0,
+	})
+})
+
 it('throws when the value name does not exist in the defaults', () => {
 	const defaults = {}
 
@@ -53,6 +59,8 @@ describe('Boolean', () => {
 		expect(parseArguments(['--dry-run=no'], defaults))
 			.toMatchObject({ dryRun: false })
 		expect(parseArguments(['--dry-run=off'], defaults))
+			.toMatchObject({ dryRun: false })
+		expect(parseArguments(['--dry-run='], defaults))
 			.toMatchObject({ dryRun: false })
 	})
 

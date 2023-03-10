@@ -9,6 +9,10 @@ export default function parseArguments<T extends { [name: string]: boolean | num
 	const outputArguments: Array<string> = []
 
 	for (const input of inputs) {
+		if (input === '--') {
+			continue
+		}
+
 		if (input.startsWith('-')) {
 			const delimiterIndex = input.indexOf('=')
 			const actualName = delimiterIndex === -1 ? input : input.substring(0, delimiterIndex)
