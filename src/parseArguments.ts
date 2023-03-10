@@ -90,18 +90,18 @@ export default function parseArguments<T extends { [name: string]: boolean | num
 	return Object.assign(outputFlags, outputArguments, { length: outputArguments.length })
 }
 
-function getFormalName(possiblyDirtyName: string, defaults: Record<string, any>): { formalName: string, negated: boolean } {
+function getFormalName(possiblyDirtyName: string, defaults: object): { formalName: string, negated: boolean } {
 	const wordList = words(possiblyDirtyName)
 	const formalName = camelCase(possiblyDirtyName)
 
-	if (wordList[0] === 'no' && defaults[formalName] === undefined) {
+	if (wordList[0] === 'no' && !(formalName in defaults)) {
 		return {
 			formalName: camelCase(wordList.slice(1).join('-')),
 			negated: true
 		}
 	}
 
-	if (wordList[0] !== 'no' && defaults[camelCase('no-' + possiblyDirtyName)] !== undefined) {
+	if (wordList[0] !== 'no' && camelCase('no-' + possiblyDirtyName) in defaults) {
 		return {
 			formalName: camelCase('no-' + possiblyDirtyName),
 			negated: true
