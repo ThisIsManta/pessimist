@@ -1,4 +1,4 @@
-import { parseArguments } from './index'
+import parseArguments from './parseArguments'
 
 it('returns the defaults, given no inputs', () => {
 	const defaults = { dryRun: Boolean(false) }
