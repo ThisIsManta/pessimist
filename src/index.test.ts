@@ -98,6 +98,15 @@ describe('Boolean', () => {
 		expect(parseArguments(['--no-dry-run=false'], defaults))
 			.toMatchObject({ noDryRun: false })
 	})
+
+	it('returns the latest value, given multiple values with the same name', () => {
+		const defaults = { dryRun: Boolean(false) }
+
+		expect(parseArguments(['--dry-run=true', '--dry-run=false'], defaults))
+			.toMatchObject({ dryRun: false })
+		expect(parseArguments(['--dry-run=true', '--dry-run=false', '--dry-run=true'], defaults))
+			.toMatchObject({ dryRun: true })
+	})
 })
 
 describe('Number', () => {
