@@ -22,12 +22,13 @@
 		"*.d.ts"
 	],
 	"scripts": {
-		"test": "jest --coverage",
+		"test": "jest",
 		"build": "tsc",
 		"preversion": "npm run build",
 		"version": "npm publish --access public"
 	},
 	"devDependencies": {
+		"@connectis/coverage-parser": "^1.0.8",
 		"@thisismanta/semantic-version": "^5.0.2",
 		"@types/jest": "^29.4.0",
 		"@types/lodash": "^4.14.191",
