@@ -3,42 +3,50 @@ import { parseArguments } from '@thisismanta/pessimist'
 
 const args = parseArguments(
     process.argv.slice(2), 
-    { dryRun: false, count: 0, inputs: [], output: '' }
+    {
+        dryRun: false,
+        count: 0,
+        outputFileName: '',
+        exclude: [],
+    },
+    {
+        aliases: [['d', 'dryRun'], ...]
+    }
 )
 ```
 
 ```sh
-node myfile --dryRun file1 file2
+node myfile file1 file2--output-file-name=file3 
 ```
 
 The above command yields `args` of the following type.
 
 ```ts
 {
-    // From the formal arguments
-    dryRun: true,
+    // From the field-value arguments
+    outputFileName: 'file3',
 
     // From the defaults
+    dryRun: false,
     count: 0,
-    inputs: [],
-    output: '',
+    exclude: [],
 
-    // From the actual arguments
+    // From the positional arguments
     '0': 'file1', 
     '1': 'file2',
     length: 2,
 }
 ```
 
-### Unknown name rejection
+### Unknown field rejection
 
-The below commands exit with non-zero code as `xxx` is not in the default object (the second parameter of `parseArguments` function).
-
-Therefore it is important to have all the possible names and values defined as the default object.
+The below commands exit with non-zero code as `somethingElse` is **not defined** in the default object (the second parameter of `parseArguments` function).
 
 ```sh
-node myfile --xxx
+node myfile --something-else
 ```
+
+Therefore it is important to have all the possible field-value arguments defined in the default object.
 
 ### Auto camel case conversion
 
@@ -47,6 +55,15 @@ The below commands yield the same output as `dry-run` is transformed into a came
 ```sh
 node myfile --dryRun
 node myfile --dry-run
+```
+
+### Field aliases
+
+The below commands yield the same output as we have `aliases: [['d', 'dryRun']]` defined in the extra options.
+
+```sh
+node myfile --dryRun
+node myfile -d
 ```
 
 ### False-like Boolean recognition
@@ -71,24 +88,24 @@ node myfile --noDryRun
 node myfile --no-dry-run
 ```
 
-The below commands yield `output === ''` as `no` prefix sets the value to an empty string.
+The below commands yield `outputFileName === ''` as `no` prefix sets the value to an empty string.
 
 ```sh
-node myfile --noOutput
-node myfile --no-output
+node myfile --noOutputFileName
+node myfile --no-output-file-name
 ```
 
 The below commands yield `input == []` as `no` prefix sets the value to an empty array.
 
 ```sh
-node myfile --noInputs
-node myfile --no-inputs
+node myfile --noExclude
+node myfile --no-exclude
 ```
 
 ### Duplicate-free guarantee
 
-The below commands yield `input == ['file2', 'file1']` as it does not keep the duplicate values.
+The below commands yield `input: ['file2', 'file1']` as it does not keep duplicate values.
 
 ```sh
-node myfile --inputs=file1 --inputs=file2 --inputs=file1
+node myfile --exclude=file1 --exclude=file2 --exclude=file1
 ```

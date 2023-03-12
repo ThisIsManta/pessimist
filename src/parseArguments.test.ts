@@ -10,7 +10,7 @@ it('returns the defaults, given no inputs', () => {
 		})
 })
 
-it('returns the specified flags among the defaults and the argument list', () => {
+it('returns the specified fields among the defaults and the argument list', () => {
 	const defaults = { dryRun: Boolean(false), debug: Boolean(false) }
 
 	expect(parseArguments(['data.yml', '--dry-run', 'data.json', '--debug'], defaults))
@@ -24,15 +24,35 @@ it('returns the specified flags among the defaults and the argument list', () =>
 })
 
 it('does not return "--"', () => {
+	expect(parseArguments(['-'], {})).toStrictEqual({
+		length: 0,
+	})
 	expect(parseArguments(['--'], {})).toStrictEqual({
+		length: 0,
+	})
+	expect(parseArguments(['---'], {})).toStrictEqual({
 		length: 0,
 	})
 })
 
-it('throws when the value name does not exist in the defaults', () => {
+it('throws when the field does not exist in the defaults', () => {
 	const defaults = {}
 
-	expect(() => parseArguments(['--dry-run'], defaults)).toThrow('Expected only known options but got "--dry-run"')
+	expect(() => parseArguments(['--dry-run'], defaults)).toThrow('Expected only known hash but got "--dry-run"')
+})
+
+it('returns the specified field, given its alias name', () => {
+	const defaults = { dryRun: false }
+
+	expect(parseArguments(['-d'], defaults, { aliases: [['d', 'dryRun']] })).toMatchObject({
+		dryRun: true,
+	})
+	expect(parseArguments(['-d', '--dryRun=false'], defaults, { aliases: [['d', 'dryRun']] })).toMatchObject({
+		dryRun: false,
+	})
+	expect(parseArguments(['--dryRun=false', '-d'], defaults, { aliases: [['d', 'dryRun']] })).toMatchObject({
+		dryRun: true,
+	})
 })
 
 describe('Boolean', () => {

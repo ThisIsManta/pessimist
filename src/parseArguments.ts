@@ -1,93 +1,121 @@
 import camelCase from 'lodash/camelCase'
 import words from 'lodash/words'
 
-export default function parseArguments<T extends { [name: string]: boolean | number | string | Array<string> }>(
+export type Hash = { [field: string]: boolean | number | string | Array<string> }
+
+type ParsedInput = string | {
+	field: string,
+	negated: boolean,
+	value: string | undefined,
+	input: string
+}
+
+export default function parseArguments<T extends Hash>(
 	inputs: Array<string>,
-	defaults: T
+	defaultHash: Readonly<T>,
+	options?: {
+		aliases: Array<[string, keyof T]>,
+	}
 ): T & ArrayLike<string> {
-	const outputFlags = Object.assign({}, defaults) as any
-	const outputArguments: Array<string> = []
+	const outputHash = Object.assign({}, defaultHash) as any
+	const outputList: Array<string> = []
 
-	for (const input of inputs) {
-		if (input === '--') {
-			continue
-		}
+	const parsedInputs = inputs
+		.filter(input => /^-+$/.test(input) === false)
+		.map((input): ParsedInput => {
+			if (/^--?\w/.test(input)) {
+				const delimiterIndex = input.indexOf('=')
 
-		if (input.startsWith('-')) {
-			const delimiterIndex = input.indexOf('=')
-			const actualName = delimiterIndex === -1 ? input : input.substring(0, delimiterIndex)
-			const actualValue = delimiterIndex === -1 ? undefined : input.substring(delimiterIndex + 1)
+				const actualName = delimiterIndex === -1 ? input : input.substring(0, delimiterIndex)
+				const { formalName, negated } = getFormalName(actualName, defaultHash)
+				const alias = options?.aliases?.find(([aliasName]) => aliasName === formalName)?.[1]?.toString()
 
-			const { formalName, negated } = getFormalName(actualName, defaults)
+				const value = delimiterIndex === -1 ? undefined : input.substring(delimiterIndex + 1)
 
-			const defaultValue = defaults[formalName]
-			if (defaultValue === undefined) {
-				throw new Error(`Expected only known options but got "${input}"`)
-
-			} else if (typeof defaultValue === 'boolean') {
-				const derivedValue = ((): boolean => {
-					if (actualValue === undefined) return true
-					if (actualValue === '') return false
-					if (/^(false|0|n|no|off)$/i.test(actualValue.trim())) return false
-					return true
-				})()
-
-				outputFlags[formalName] = negated ? !derivedValue : derivedValue
-
-			} else if (typeof defaultValue === 'number') {
-				if (negated) {
-					if (actualValue) {
-						throw new Error(`Expected "${input}" to have no values.`)
-
-					} else {
-						outputFlags[formalName] = defaults[formalName]
-					}
-
-				} else {
-					outputFlags[formalName] = actualValue === undefined ? NaN : parseFloat(actualValue)
-				}
-
-			} else if (typeof defaultValue === 'string') {
-				if (negated) {
-					if (actualValue === undefined || outputFlags[formalName] === actualValue) {
-						outputFlags[formalName] = ''
-					}
-
-				} else if (actualValue === undefined) {
-					throw new Error(`Expected "${input}" to have a value.`)
-
-				} else {
-					outputFlags[formalName] = actualValue
-				}
-
-			} else if (Array.isArray(defaultValue)) {
-				if (negated) {
-					if (actualValue === undefined) {
-						outputFlags[formalName] = []
-
-					} else {
-						outputFlags[formalName] = difference(outputFlags[formalName], [actualValue])
-					}
-
-				} else {
-					if (actualValue === undefined) {
-						throw new Error(`Expected "${input}" to have a value.`)
-					}
-
-					if ((outputFlags[formalName] as Array<string>).includes(actualValue)) {
-						outputFlags[formalName] = difference(outputFlags[formalName], [actualValue])
-					}
-
-					outputFlags[formalName] = [...outputFlags[formalName], actualValue]
+				return {
+					field: alias || formalName,
+					negated,
+					value,
+					input,
 				}
 			}
 
-		} else {
-			outputArguments.push(input)
+			return input
+		})
+
+	for (const input of parsedInputs) {
+		if (typeof input === 'string') {
+			outputList.push(input)
+			continue
+		}
+
+		const { field, negated, value } = input
+		const defaultValue = defaultHash[field]
+
+		if (defaultValue === undefined) {
+			throw new Error(`Expected only known hash but got "${input.input}"`)
+		}
+
+		if (typeof defaultValue === 'boolean') {
+			const derivedValue = ((): boolean => {
+				if (value === undefined) return true
+				if (value === '') return false
+				if (/^(false|0|n|no|off)$/i.test(value.trim())) return false
+				return true
+			})()
+
+			outputHash[field] = negated ? !derivedValue : derivedValue
+
+		} else if (typeof defaultValue === 'number') {
+			if (negated) {
+				if (value) {
+					throw new Error(`Expected "${input.input}" to have no values.`)
+
+				} else {
+					outputHash[field] = defaultHash[field]
+				}
+
+			} else {
+				outputHash[field] = value === undefined ? NaN : parseFloat(value)
+			}
+
+		} else if (typeof defaultValue === 'string') {
+			if (negated) {
+				if (value === undefined || outputHash[field] === value) {
+					outputHash[field] = ''
+				}
+
+			} else if (value === undefined) {
+				throw new Error(`Expected "${input.input}" to have a value.`)
+
+			} else {
+				outputHash[field] = value
+			}
+
+		} else if (Array.isArray(defaultValue)) {
+			if (negated) {
+				if (value === undefined) {
+					outputHash[field] = []
+
+				} else {
+					outputHash[field] = difference(outputHash[field], [value])
+				}
+
+			} else {
+				if (value === undefined) {
+					throw new Error(`Expected "${input.input}" to have a value.`)
+				}
+
+				if ((outputHash[field] as Array<string>).includes(value)) {
+					outputHash[field] = difference(outputHash[field], [value])
+				}
+
+				outputHash[field] = [...outputHash[field], value]
+			}
 		}
 	}
 
-	return Object.assign(outputFlags, outputArguments, { length: outputArguments.length })
+	return Object.assign(outputHash, outputList, { length: outputList.length })
 }
 
 function getFormalName(possiblyDirtyName: string, defaults: object): { formalName: string, negated: boolean } {
