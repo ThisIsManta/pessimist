@@ -3,7 +3,7 @@ import words from 'lodash/words'
 
 export type Hash = { [field: string]: boolean | number | string | Array<string> }
 
-type ParsedInput = string | {
+type NamedInput = {
 	field: string,
 	negated: boolean,
 	value: string | undefined,
@@ -13,16 +13,14 @@ type ParsedInput = string | {
 export default function parseArguments<T extends Hash>(
 	inputs: Array<string>,
 	defaultHash: Readonly<T>,
-	options?: {
+	options?: Partial<{
 		aliases: Array<[string, keyof T]>,
-	}
+		exclusives: Array<Array<keyof T>>,
+	}>
 ): T & ArrayLike<string> {
-	const outputHash = Object.assign({}, defaultHash) as any
-	const outputList: Array<string> = []
-
-	const parsedInputs = inputs
+	const [positionalArguments, namedArguments] = inputs
 		.filter(input => /^-+$/.test(input) === false)
-		.map((input): ParsedInput => {
+		.reduce(([positionalArguments, namedArguments]: [Array<string>, Array<NamedInput>], input) => {
 			if (/^--?\w/.test(input)) {
 				const delimiterIndex = input.indexOf('=')
 
@@ -32,28 +30,26 @@ export default function parseArguments<T extends Hash>(
 
 				const value = delimiterIndex === -1 ? undefined : input.substring(delimiterIndex + 1)
 
-				return {
+				namedArguments.push({
 					field: alias || formalName,
 					negated,
 					value,
 					input,
-				}
+				})
+
+			} else {
+				positionalArguments.push(input)
 			}
 
-			return input
-		})
+			return [positionalArguments, namedArguments]
+		}, [[], []])
 
-	for (const input of parsedInputs) {
-		if (typeof input === 'string') {
-			outputList.push(input)
-			continue
-		}
-
-		const { field, negated, value } = input
+	const outputHash = Object.assign({}, defaultHash) as any
+	for (const { field, negated, value, input } of namedArguments) {
 		const defaultValue = defaultHash[field]
 
 		if (defaultValue === undefined) {
-			throw new Error(`Expected only known hash but got "${input.input}"`)
+			throw new Error(`Unexpected "${input}" as it was not defined in the default hash.`)
 		}
 
 		if (typeof defaultValue === 'boolean') {
@@ -69,7 +65,7 @@ export default function parseArguments<T extends Hash>(
 		} else if (typeof defaultValue === 'number') {
 			if (negated) {
 				if (value) {
-					throw new Error(`Expected "${input.input}" to have no values.`)
+					throw new Error(`Unexpected "${input}" to have a value.`)
 
 				} else {
 					outputHash[field] = defaultHash[field]
@@ -86,7 +82,7 @@ export default function parseArguments<T extends Hash>(
 				}
 
 			} else if (value === undefined) {
-				throw new Error(`Expected "${input.input}" to have a value.`)
+				throw new Error(`Expected "${input}" to have a value.`)
 
 			} else {
 				outputHash[field] = value
@@ -103,7 +99,7 @@ export default function parseArguments<T extends Hash>(
 
 			} else {
 				if (value === undefined) {
-					throw new Error(`Expected "${input.input}" to have a value.`)
+					throw new Error(`Expected "${input}" to have a value.`)
 				}
 
 				if ((outputHash[field] as Array<string>).includes(value)) {
@@ -115,7 +111,19 @@ export default function parseArguments<T extends Hash>(
 		}
 	}
 
-	return Object.assign(outputHash, outputList, { length: outputList.length })
+	if (options?.exclusives) {
+		const fields = Array.from(new Set(namedArguments.map(({ field }) => field)))
+		const fieldInputMap = Object.fromEntries(namedArguments.map(({ field, input }) => [field, input]))
+
+		for (const group of options.exclusives) {
+			const intersections = intersect(group as Array<string>, fields)
+			if (intersections.length > 1) {
+				throw new Error('Unexpected ' + intersections.map(field => '"' + fieldInputMap[field] + '"').join(' and ') + ' to exist at the same time as they are mutually exclusive.')
+			}
+		}
+	}
+
+	return Object.assign(outputHash, positionalArguments, { length: positionalArguments.length })
 }
 
 function getFormalName(possiblyDirtyName: string, defaults: object): { formalName: string, negated: boolean } {
@@ -144,4 +152,8 @@ function getFormalName(possiblyDirtyName: string, defaults: object): { formalNam
 
 function difference<T>(sourceList: Array<T>, subtractorList: Array<T>) {
 	return sourceList.filter(item => !subtractorList.includes(item))
+}
+
+function intersect<T>(sourceList: Array<T>, comparingList: Array<T>) {
+	return sourceList.filter(item => comparingList.includes(item))
 }

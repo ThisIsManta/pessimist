@@ -8,9 +8,6 @@ const args = parseArguments(
         count: 0,
         outputFileName: '',
         exclude: [],
-    },
-    {
-        aliases: [['d', 'dryRun'], ...]
     }
 )
 ```
@@ -59,7 +56,19 @@ node myfile --dry-run
 
 ### Field aliases
 
-The below commands yield the same output as we have `aliases: [['d', 'dryRun']]` defined in the extra options.
+The below commands yield the same output as `-d` is an alias of `--dryRun` which is defined in the extra options.
+
+```ts
+parseArguments(
+    process.argv.slice(2), 
+    {
+        dryRun: false,
+    },
+    {
+        aliases: [['d', 'dryRun'], ...],
+    }
+)
+```
 
 ```sh
 node myfile --dryRun
@@ -108,4 +117,25 @@ The below commands yield `input: ['file2', 'file1']` as it does not keep duplica
 
 ```sh
 node myfile --exclude=file1 --exclude=file2 --exclude=file1
+```
+
+### Mutual exclusive fields
+
+The below command throws an error as both fields are defined as mutually exclusive in the extra options.
+
+```ts
+parseArguments(
+    process.argv.slice(2), 
+    {
+        dryRun: false,
+        confirmed: true,
+    },
+    {
+        exclusives: [['dryRun', 'confirmed'], ...],
+    }
+)
+```
+
+```sh
+node myfile --dryRun --confirmed
 ```

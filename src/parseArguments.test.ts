@@ -38,7 +38,7 @@ it('does not return "--"', () => {
 it('throws when the field does not exist in the defaults', () => {
 	const defaults = {}
 
-	expect(() => parseArguments(['--dry-run'], defaults)).toThrow('Expected only known hash but got "--dry-run"')
+	expect(() => parseArguments(['--dry-run'], defaults)).toThrow('Unexpected "--dry-run" as it was not defined in the default hash.')
 })
 
 it('returns the specified field, given its alias name', () => {
@@ -53,6 +53,12 @@ it('returns the specified field, given its alias name', () => {
 	expect(parseArguments(['--dryRun=false', '-d'], defaults, { aliases: [['d', 'dryRun']] })).toMatchObject({
 		dryRun: true,
 	})
+})
+
+it('throws when one or more exclusive fields co-exist', () => {
+	const defaults = { dryRun: false, confirmed: true }
+
+	expect(() => parseArguments(['--dryRun', '--confirmed'], defaults, { exclusives: [['dryRun', 'confirmed']] })).toThrow('Unexpected "--dryRun" and "--confirmed" to exist at the same time as they are mutually exclusive.')
 })
 
 describe('Boolean', () => {
@@ -167,7 +173,7 @@ describe('Number', () => {
 		const defaults = { count: 0 }
 
 		expect(() => parseArguments(['--no-count=1'], defaults))
-			.toThrow('Expected "--no-count=1" to have no values.')
+			.toThrow('Unexpected "--no-count=1" to have a value.')
 	})
 })
 
