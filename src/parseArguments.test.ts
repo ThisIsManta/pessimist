@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import parseArguments from './parseArguments'
 
 it('returns the defaults, given no inputs', () => {
@@ -53,6 +54,12 @@ it('returns the specified field, given its alias name', () => {
 	expect(parseArguments(['--dryRun=false', '-d'], defaults, { aliases: [['d', 'dryRun']] })).toMatchObject({
 		dryRun: true,
 	})
+})
+
+it('does not throw when only one exclusive field is provided', () => {
+	const defaults = { dryRun: false, confirmed: true }
+
+	expect(() => parseArguments(['--dryRun'], defaults, { exclusives: [['dryRun', 'confirmed']] })).not.toThrow()
 })
 
 it('throws when one or more exclusive fields co-exist', () => {

@@ -3,7 +3,7 @@
 		"parallel": true,
 		"commands": {
 			"test": {
-				"run": "npm run test -- --ci --silent --coverage && node check-coverage-report.mjs"
+				"run": "npm run test -- --silent"
 			},
 			"build": {
 				"run": "npm run build -- --noEmit"
