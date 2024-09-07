@@ -1,0 +1,20 @@
+{
+	"pre-commit": {
+		"parallel": true,
+		"commands": {
+			"test": {
+				"run": "npm run test -- --ci --silent --coverage && node check-coverage-report.mjs"
+			},
+			"build": {
+				"run": "npm run build -- --noEmit"
+			}
+		}
+	},
+	"commit-msg": {
+		"commands": {
+			"lint": {
+				"run": "npx lint-commit-message {1}"
+			}
+		}
+	}
+}
