@@ -1,5 +1,6 @@
 import camelCase from 'lodash/camelCase'
 import words from 'lodash/words'
+import { parseBoolean } from './parseBoolean'
 
 export type Hash = { [field: string]: boolean | number | string | Array<string> }
 
@@ -10,7 +11,7 @@ type NamedInput = {
 	input: string
 }
 
-export default function parseArguments<T extends Hash>(
+export function parseArguments<T extends Hash>(
 	inputs: Array<string>,
 	defaultHash: Readonly<T>,
 	options?: Partial<{
@@ -53,12 +54,7 @@ export default function parseArguments<T extends Hash>(
 		}
 
 		if (typeof defaultValue === 'boolean') {
-			const derivedValue = ((): boolean => {
-				if (value === undefined) return true
-				if (value === '') return false
-				if (/^(false|0|n|no|off)$/i.test(value.trim())) return false
-				return true
-			})()
+			const derivedValue = value === undefined ? true : parseBoolean(value)
 
 			outputHash[field] = negated ? !derivedValue : derivedValue
 

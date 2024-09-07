@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest'
-import parseArguments from './parseArguments'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { parseArguments } from './parseArguments'
+import { parseBoolean } from './parseBoolean'
+
+vi.mock('./parseBoolean', async (importOriginal) => {
+	const { parseBoolean } = await importOriginal<any>()
+	return { parseBoolean: vi.fn(parseBoolean) }
+})
+
+afterEach(() => {
+	vi.clearAllMocks()
+})
 
 it('returns the defaults, given no inputs', () => {
 	const defaults = { dryRun: Boolean(false) }
@@ -74,48 +84,21 @@ describe('Boolean', () => {
 
 		expect(parseArguments(['--dry-run'], defaults))
 			.toMatchObject({ dryRun: true })
+		expect(parseBoolean).not.toHaveBeenCalled()
 	})
 
 	it('returns false, given a false-like string', () => {
 		const defaults = { dryRun: Boolean(true) }
+		parseArguments(['--dry-run=false'], defaults)
 
-		expect(parseArguments(['--dry-run=false'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=False'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=FALSE'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=0'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=n'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=no'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run=off'], defaults))
-			.toMatchObject({ dryRun: false })
-		expect(parseArguments(['--dry-run='], defaults))
-			.toMatchObject({ dryRun: false })
+		expect(parseBoolean).toHaveBeenCalled()
 	})
 
 	it('returns true, otherwise', () => {
 		const defaults = { dryRun: Boolean(false) }
+		parseArguments(['--dry-run=false'], defaults)
 
-		expect(parseArguments(['--dry-run=true'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=True'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=TRUE'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=1'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=y'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=yes'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=on'], defaults))
-			.toMatchObject({ dryRun: true })
-		expect(parseArguments(['--dry-run=xxx'], defaults))
-			.toMatchObject({ dryRun: true })
+		expect(parseBoolean).toHaveBeenCalled()
 	})
 
 	it('returns the inverse, given a no-prefix value', () => {
@@ -125,6 +108,7 @@ describe('Boolean', () => {
 			.toMatchObject({ dryRun: false })
 		expect(parseArguments(['--no-dry-run=false'], defaults))
 			.toMatchObject({ dryRun: true })
+		expect(parseBoolean).toHaveBeenCalled()
 	})
 
 	it('returns the inverse, given a no-prefix default', () => {
@@ -138,6 +122,7 @@ describe('Boolean', () => {
 			.toMatchObject({ noDryRun: true })
 		expect(parseArguments(['--no-dry-run=false'], defaults))
 			.toMatchObject({ noDryRun: false })
+		expect(parseBoolean).toHaveBeenCalled()
 	})
 
 	it('returns the latest value, given multiple values with the same name', () => {

@@ -1,1 +1,2 @@
-export { default as parseArguments } from './parseArguments'
+export * from './parseArguments'
+export * from './parseBoolean'
