@@ -1,37 +1,40 @@
 ```ts
 import { parseArguments } from '@thisismanta/pessimist'
 
-const args = parseArguments(
-    process.argv.slice(2), 
-    {
-        dryRun: false,
-        count: 0,
-        outputFileName: '',
-        exclude: [],
-    }
+const { count, dryRun, outputFileName, ...positionalArguments } =
+parseArguments(
+  process.argv.slice(2), 
+  {
+    count: 0,
+    dryRun: false,
+    outputFileName: '',
+    exclude: [],
+  }
 )
+
+for (const item of Array.from(positionalArguments)) {
+  // ...
+}
 ```
 
-```sh
-node myfile file1 file2--output-file-name=file3 
 ```
-
-The above command yields `args` of the following type.
+file1 file2 --count=3 --output-file-name=file3
+```
 
 ```ts
 {
-    // From the field-value arguments
-    outputFileName: 'file3',
+  // From the positional arguments
+  '0': 'file1', 
+  '1': 'file2',
+  length: 2,
 
-    // From the defaults
-    dryRun: false,
-    count: 0,
-    exclude: [],
+  // From the named arguments
+  outputFileName: 'file3',
+  dryRun: true,
 
-    // From the positional arguments
-    '0': 'file1', 
-    '1': 'file2',
-    length: 2,
+  // From the defaults
+  count: 0,
+  exclude: [],
 }
 ```
 
@@ -40,39 +43,19 @@ The above command yields `args` of the following type.
 The below commands exit with non-zero code as `somethingElse` is **not defined** in the default object (the second parameter of `parseArguments` function).
 
 ```sh
-node myfile --something-else
+--something-else
+# Error: Unexpected an unknown argument: --something-else
 ```
 
-Therefore it is important to have all the possible field-value arguments defined in the default object.
+Therefore it is **important** to have all the possible field-value arguments defined in the default object.
 
-### Auto camel case conversion
+### Auto camel-case conversion
 
-The below commands yield the same output as `dry-run` is transformed into a camel case.
+The below commands yield the same output because `dry-run` is transformed into a camel case.
 
 ```sh
-node myfile --dryRun
-node myfile --dry-run
-```
-
-### Field aliases
-
-The below commands yield the same output as `-d` is an alias of `--dryRun` which is defined in the extra options.
-
-```ts
-parseArguments(
-    process.argv.slice(2), 
-    {
-        dryRun: false,
-    },
-    {
-        aliases: [['d', 'dryRun'], ...],
-    }
-)
-```
-
-```sh
-node myfile --dryRun
-node myfile -d
+--dryRun  # { dryRun: true }
+--dry-run # { dryRun: true }
 ```
 
 ### False-like Boolean recognition
@@ -80,62 +63,84 @@ node myfile -d
 The below commands yield the same output.
 
 ```sh
-node myfile --dryRun=false
-node myfile --dryRun=False
-node myfile --dryRun=FALSE
-node myfile --dryRun=n
-node myfile --dryRun=no
-node myfile --dryRun=0
+--dryRun=false # { dryRun: false }
+--dryRun=False
+--dryRun=FALSE
+--dryRun=n
+--dryRun=no
+--dryRun=0
 ```
 
 ### Negation and clearance
 
-The below commands yield `dryRun === false` as `no` prefix negates the Boolean value.
+Having `no` argument prefix negates the Boolean value.
 
 ```sh
-node myfile --noDryRun
-node myfile --no-dry-run
+--noDryRun         # { dryRun: false }
+--no-dry-run       # { dryRun: false }
+--no-dry-run=false # { dryRun: true }
 ```
 
-The below commands yield `outputFileName === ''` as `no` prefix sets the value to an empty string.
+Having `no` argument prefix clears the string value.
 
 ```sh
-node myfile --noOutputFileName
-node myfile --no-output-file-name
+--noOutputFileName    # { outputFileName: '' }
+--no-output-file-name # { outputFileName: '' }
 ```
 
-The below commands yield `input == []` as `no` prefix sets the value to an empty array.
+Having `no` argument prefix for an array removes the given value from the output array.
 
 ```sh
-node myfile --noExclude
-node myfile --no-exclude
+--exclude=file1 --exclude=file2 --no-exclude=file1
+# { exclude: ['file2'] }
 ```
 
 ### Duplicate-free guarantee
 
-The below commands yield `input: ['file2', 'file1']` as it does not keep duplicate values.
-
 ```sh
-node myfile --exclude=file1 --exclude=file2 --exclude=file1
+--exclude=file1 --exclude=file2 --exclude=file1
+# { input: ['file2', 'file1'] }
 ```
 
-### Mutual exclusive fields
-
-The below command throws an error as both fields are defined as mutually exclusive in the extra options.
+### Field aliases
 
 ```ts
 parseArguments(
-    process.argv.slice(2), 
-    {
-        dryRun: false,
-        confirmed: true,
-    },
-    {
-        exclusives: [['dryRun', 'confirmed'], ...],
-    }
+  process.argv.slice(2), 
+  { dryRun: false },
+  { aliases: { d: 'dryRun', commit: '!dryRun' } }
 )
 ```
 
 ```sh
-node myfile --dryRun --confirmed
+node myfile --dryRun # { dryRun: true }
+node myfile -d       # { dryRun: true }
+```
+
+However, the below commands yield the opposite outputs because `!` prefix negates the value from `commit`.
+
+```sh
+node myfile --commit    # { dryRun: false }
+node myfile --noCommit  # { dryRun: true }
+node myfile --no-commit # { dryRun: true }
+```
+
+### Mutual exclusive fields
+
+```ts
+parseArguments(
+  process.argv.slice(2), 
+  {
+    dryRun: false,
+    confirmed: true,
+  },
+  {
+    exclusives: [['dryRun', 'confirmed'], ...],
+  }
+)
+```
+
+```sh
+--dryRun --confirmed
+# Error: Unexpected mutual exclusive arguments: --dryRun --confirmed
 ```
