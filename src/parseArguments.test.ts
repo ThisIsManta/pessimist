@@ -1,12 +1,8 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { parseArguments } from './parseArguments'
 
-afterEach(() => {
-	vi.clearAllMocks()
-})
-
 it('returns the defaults, given no inputs', () => {
-	const defaults = { dryRun: Boolean(false) }
+	const defaults = { dryRun: false }
 
 	expect(parseArguments([], defaults))
 		.toEqual({
@@ -15,10 +11,10 @@ it('returns the defaults, given no inputs', () => {
 		})
 })
 
-it('returns the output containing the named arguments and the positional arguments', () => {
+it('returns the named arguments and the positional arguments', () => {
 	const { dryRun, debug, ...positionalArguments } = parseArguments(
 		['data.yml', '--dry-run', 'data.json'],
-		{ dryRun: Boolean(false), debug: Boolean(false) }
+		{ dryRun: false, debug: false }
 	)
 
 	expect(dryRun).toBe(true)
@@ -32,80 +28,28 @@ it('returns the output containing the named arguments and the positional argumen
 })
 
 it('does not return "--"', () => {
-	expect(parseArguments(['-'], {})).toStrictEqual({
-		length: 0,
-	})
-	expect(parseArguments(['--'], {})).toStrictEqual({
-		length: 0,
-	})
-	expect(parseArguments(['---'], {})).toStrictEqual({
-		length: 0,
-	})
+	expect(parseArguments(
+		['-'],
+		{}
+	)).toStrictEqual({ length: 0 })
+	expect(parseArguments(
+		['--'],
+		{}
+	)).toStrictEqual({ length: 0 })
+	expect(parseArguments(
+		['---'],
+		{}
+	)).toStrictEqual({ length: 0 })
 })
 
 it('throws when the field does not exist in the defaults', () => {
-	const defaults = {}
-
-	expect(() => parseArguments(['--dry-run'], defaults)).toThrow('Unexpected an unknown argument: --dry-run')
+	expect(() => parseArguments(
+		['--dry-run'],
+		{}
+	)).toThrow('Unexpected an unknown argument: --dry-run')
 })
 
-it('returns the rightmost respective value', () => {
-	expect(parseArguments(
-		['-d'],
-		{ d: false },
-	)).toMatchObject({ d: true })
-	expect(parseArguments(
-		['-d=true'],
-		{ d: false },
-	)).toMatchObject({ d: true })
-	expect(parseArguments(
-		['-d'],
-		{ dryRun: false },
-		{ aliases: { d: 'dryRun' } }
-	)).toMatchObject({ dryRun: true })
-	expect(parseArguments(
-		['-d', '--dryRun=false'],
-		{ dryRun: false },
-		{ aliases: { d: 'dryRun' } }
-	)).toMatchObject({ dryRun: false })
-	expect(parseArguments(
-		['--dryRun=false', '-d'],
-		{ dryRun: false },
-		{ aliases: { d: 'dryRun' } }
-	)).toMatchObject({ dryRun: true })
-	expect(parseArguments(
-		['--commit'],
-		{ dryRun: true },
-		{ aliases: { commit: '!dryRun' } }
-	)).toMatchObject({ dryRun: false })
-	expect(parseArguments(
-		['--no-commit'],
-		{ dryRun: false },
-		{ aliases: { commit: '!dryRun' } }
-	)).toMatchObject({ dryRun: true })
-	expect(parseArguments(
-		['--commit=false'],
-		{ dryRun: false },
-		{ aliases: { commit: '!dryRun' } }
-	)).toMatchObject({ dryRun: true })
-	expect(parseArguments(
-		['--commit'],
-		{ run: false },
-		{ aliases: { noCommit: '!run' } }
-	)).toMatchObject({ run: true })
-	expect(parseArguments(
-		['--noCommit'],
-		{ run: true },
-		{ aliases: { noCommit: '!run' } }
-	)).toMatchObject({ run: false })
-	expect(parseArguments(
-		['--no-commit'],
-		{ run: true },
-		{ aliases: { noCommit: '!run' } }
-	)).toMatchObject({ run: false })
-})
-
-it('throws when an unknown argument is provided', () => {
+it('throws, given an unknown argument', () => {
 	expect(() => parseArguments(
 		['-u'],
 		{ dryRun: false }
@@ -120,97 +64,105 @@ it('throws when an unknown argument is provided', () => {
 	)).toThrow('Unexpected an unknown argument: -un=file')
 })
 
-it('throws when non-boolean short-hand arguments are provided', () => {
-	expect(() => parseArguments(
-		['-o'],
-		{ o: '' }
-	)).toThrow('Unexpected the short-hand argument -o which is a non-Boolean')
-})
-
-it('does not throw when only one exclusive field is provided', () => {
-	const defaults = { dryRun: false, confirmed: true }
-
+it('does not throw, given only one exclusive argument', () => {
 	expect(() => parseArguments(
 		['--dryRun'],
-		defaults,
+		{ dryRun: false, confirmed: true },
 		{ exclusives: [['dryRun', 'confirmed']] }
 	)).not.toThrow()
 })
 
-it('throws when one or more exclusive fields co-exist', () => {
-	const defaults = { dryRun: false, confirmed: true }
-
+it('throws, given more than one exclusive arguments', () => {
 	expect(() => parseArguments(
 		['--dryRun', '--confirmed'],
-		defaults,
+		{ dryRun: false, confirmed: true },
 		{ exclusives: [['dryRun', 'confirmed']] }
 	)).toThrow('Unexpected mutual exclusive arguments: --dryRun --confirmed')
 })
 
 describe('Boolean', () => {
 	it('returns true, given no value', () => {
-		const defaults = { dryRun: false }
-
 		expect(parseArguments(
 			['--dry-run'],
-			defaults
+			{ dryRun: false }
 		)).toMatchObject({ dryRun: true })
 	})
 
 	it('returns false, given a false-like string', () => {
-		const defaults = { dryRun: true }
-
 		expect(parseArguments(
 			['--dry-run=false'],
-			defaults
+			{ dryRun: true }
 		)).toMatchObject({ dryRun: false })
 	})
 
 	it('returns true, otherwise', () => {
-		const defaults = { dryRun: false }
-
 		expect(parseArguments(
 			['--dry-run=1'],
-			defaults
+			{ dryRun: false }
 		)).toMatchObject({ dryRun: true })
-
 	})
 
-	it('returns the inverse, given a "no" name prefix', () => {
-		const defaults = { dryRun: false }
-
+	it('returns the opposite, given "no" name prefix', () => {
 		expect(parseArguments(
 			['--no-dry-run'],
-			defaults
+			{ dryRun: false }
 		)).toMatchObject({ dryRun: false })
 		expect(parseArguments(
 			['--no-dry-run=false'],
-			defaults
+			{ dryRun: false }
 		)).toMatchObject({ dryRun: true })
-	})
-
-	it('returns the inverse, given a no-prefix default', () => {
-		const defaults = { noDryRun: false }
-
 		expect(parseArguments(
 			['--dry-run'],
-			defaults
+			{ noDryRun: true }
 		)).toMatchObject({ noDryRun: false })
 		expect(parseArguments(
 			['--dry-run=false'],
-			defaults
+			{ noDryRun: false }
 		)).toMatchObject({ noDryRun: true })
 		expect(parseArguments(
 			['--no-dry-run'],
-			defaults
+			{ noDryRun: false }
 		)).toMatchObject({ noDryRun: true })
 		expect(parseArguments(
 			['--no-dry-run=false'],
-			defaults
+			{ noDryRun: true }
 		)).toMatchObject({ noDryRun: false })
 	})
 
-	it('returns the latest value, given multiple values with the same name', () => {
+	it('returns the opposite, given "!" in the alias', () => {
+		expect(parseArguments(
+			['--commit'],
+			{ dryRun: true },
+			{ aliases: { commit: '!dryRun' } }
+		)).toMatchObject({ dryRun: false })
+		expect(parseArguments(
+			['--no-commit'],
+			{ dryRun: false },
+			{ aliases: { commit: '!dryRun' } }
+		)).toMatchObject({ dryRun: true })
+		expect(parseArguments(
+			['--commit=false'],
+			{ dryRun: false },
+			{ aliases: { commit: '!dryRun' } }
+		)).toMatchObject({ dryRun: true })
+		expect(parseArguments(
+			['--commit'],
+			{ run: false },
+			{ aliases: { noCommit: '!run' } }
+		)).toMatchObject({ run: true })
+		expect(parseArguments(
+			['--noCommit'],
+			{ run: true },
+			{ aliases: { noCommit: '!run' } }
+		)).toMatchObject({ run: false })
+		expect(parseArguments(
+			['--no-commit'],
+			{ run: true },
+			{ aliases: { noCommit: '!run' } }
+		)).toMatchObject({ run: false })
+	})
+
+	it('returns the rightmost value, given multiple arguments with the same name', () => {
 		const defaults = { dryRun: false }
 
 		expect(parseArguments(
@@ -221,6 +173,56 @@ describe('Boolean', () => {
 			['--dry-run=true', '--dry-run=false', '--dry-run=true'],
 			defaults
 		)).toMatchObject({ dryRun: true })
+		expect(parseArguments(
+			['-d', '--dryRun=false'],
+			defaults,
+			{ aliases: { d: 'dryRun' } }
+		)).toMatchObject({ dryRun: false })
+		expect(parseArguments(
+			['--dryRun=false', '-d'],
+			defaults,
+			{ aliases: { d: 'dryRun' } }
+		)).toMatchObject({ dryRun: true })
+	})
+
+	it('returns the value, given a single-letter short-hand argument', () => {
+		expect(parseArguments(
+			['-d'],
+			{ d: false },
+		)).toMatchObject({ d: true })
+		expect(parseArguments(
+			['-d=true'],
+			{ d: false },
+		)).toMatchObject({ d: true })
+		expect(parseArguments(
+			['-d'],
+			{ dryRun: false },
+			{ aliases: { d: 'dryRun' } }
+		)).toMatchObject({ dryRun: true })
+	})
+
+	it('returns multiple values, given a merged single-letter short-hand argument', () => {
+		expect(parseArguments(
+			['-vf'],
+			{ v: false, f: false },
+		)).toMatchObject({ v: true, f: true })
+		expect(parseArguments(
+			['-vf'],
+			{ verbose: false, force: false },
+			{ aliases: { v: 'verbose', f: 'force' } }
+		)).toMatchObject({ verbose: true, force: true })
+		expect(parseArguments(
+			['-vf'],
+			{ verbose: false, f: false },
+			{ aliases: { v: 'verbose' } }
+		)).toMatchObject({ verbose: true, f: true })
+	})
+
+	it('throws, given a non-Boolean short-hand argument', () => {
+		expect(() => parseArguments(
+			['-o'],
+			{ o: '' }
+		)).toThrow('Unexpected the short-hand argument -o which is a non-Boolean')
 	})
 })
 
@@ -251,21 +253,17 @@ describe('Number', () => {
 		)).toMatchObject({ count: NaN })
 	})
 
-	it('returns the default value, given no-prefix value', () => {
-		const defaults = { count: 0 }
-
+	it('returns the default value, given "no" name prefix', () => {
 		expect(parseArguments(
 			['--count=1', '--no-count'],
-			defaults
+			{ count: 0 }
 		)).toMatchObject({ count: 0 })
 	})
 
-	it('throws, given no-prefix value with a value', () => {
-		const defaults = { count: 0 }
-
+	it('throws, given "no" name prefix with a value', () => {
 		expect(() => parseArguments(
 			['--no-count=1'],
-			defaults
+			{ count: 0 }
 		)).toThrow('Expected --no-count=1 to supply a numeric value.')
 	})
 })
@@ -284,7 +282,7 @@ describe('String', () => {
 		)).toMatchObject({ input: '' })
 	})
 
-	it('returns an empty string, given no-prefix value with a matching value', () => {
+	it('returns an empty string, given "no" name prefix with a matching value', () => {
 		const defaults = { input: 'n/a' }
 
 		expect(parseArguments(
@@ -326,20 +324,16 @@ describe('Array<String>', () => {
 	})
 
 	it('does not return duplicate items', () => {
-		const defaults = { input: [] }
-
 		expect(parseArguments(
 			['--input=dream', '--input=comes', '--input=dream'],
-			defaults
+			{ input: [] }
 		)).toMatchObject({ input: ['comes', 'dream'] })
 	})
 
-	it('returns an empty list, given no-prefix value without a value', () => {
-		const defaults = { input: ['dream'] }
-
+	it('returns an empty list, given "no" name prefix without a value', () => {
 		expect(parseArguments(
 			['--no-input'],
-			defaults
+			{ input: ['dream'] }
 		)).toMatchObject({ input: [] })
 	})
 
@@ -357,11 +351,9 @@ describe('Array<String>', () => {
 	})
 
 	it('throws, given no value', () => {
-		const defaults = { input: [] }
-
 		expect(() => parseArguments(
 			['--input'],
-			defaults
+			{ input: [] }
 		)).toThrow('Expected --input to supply a value.')
 	})
 })
