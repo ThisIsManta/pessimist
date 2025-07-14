@@ -49,6 +49,29 @@ it('throws when the field does not exist in the defaults', () => {
 	)).toThrow('Unexpected an unknown argument: --dry-run')
 })
 
+it('throws, given a mismatched alias', () => {
+	expect(() => parseArguments(
+		['--dry-run'],
+		{ dryRun: false },
+		{
+			aliases: {
+				// @ts-expect-error
+				u: true
+			}
+		}
+	)).toThrow('Expected the right-hand side of the alias to be a string: u → true')
+	expect(() => parseArguments(
+		['--dry-run'],
+		{ dryRun: false },
+		{
+			aliases: {
+				// @ts-expect-error
+				u: 'unknown'
+			}
+		}
+	)).toThrow('Expected the right-hand side of the alias to be one of the known names: u → unknown')
+})
+
 it('throws, given an unknown argument', () => {
 	expect(() => parseArguments(
 		['-u'],
@@ -264,7 +287,7 @@ describe('Number', () => {
 		expect(() => parseArguments(
 			['--no-count=1'],
 			{ count: 0 }
-		)).toThrow('Expected --no-count=1 to supply a numeric value.')
+		)).toThrow('Unexpected a value when using "no" name prefix: --no-count=1')
 	})
 })
 
@@ -305,7 +328,7 @@ describe('String', () => {
 		expect(() => parseArguments(
 			['--input'],
 			defaults
-		)).toThrow('Expected --input to supply a string value.')
+		)).toThrow('Expected a value: --input')
 	})
 })
 
@@ -354,6 +377,6 @@ describe('Array<String>', () => {
 		expect(() => parseArguments(
 			['--input'],
 			{ input: [] }
-		)).toThrow('Expected --input to supply a value.')
+		)).toThrow('Expected a value: --input')
 	})
 })

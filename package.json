@@ -25,7 +25,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"test": "vitest run --coverage.enabled --coverage.thresholds.100 --coverage.include src --coverage.exclude src/index.ts",
+		"test": "tsc --noEmit && vitest run --coverage.enabled --coverage.thresholds.100 --coverage.include src --coverage.exclude src/index.ts",
 		"preversion": "npm run build",
 		"version": "npm publish --access public"
 	},

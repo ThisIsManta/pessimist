@@ -5,7 +5,7 @@ export type Hash = { [field: string]: boolean | number | string | Array<string> 
 
 export function parseArguments<
 	K extends string & keyof T,
-	T = Record<string, boolean | number | string | Array<string>>,
+	T = { [key: string]: boolean | number | string | Array<string> },
 >(
 	inputs: Array<string>,
 	defaultHash: Readonly<T>,
@@ -14,35 +14,54 @@ export function parseArguments<
 		exclusives: Array<Array<K>>,
 	}>
 ): T & ArrayLike<string> {
-	const kebabNameToFormalName: Record<string, string> = {}
+	const logicHash: Record<string, { formalName: K, negated: boolean }> = {}
 	for (const name in defaultHash) {
-		if (name.length === 1) {
-			kebabNameToFormalName['-' + name] = name
+		const formalName = name as string as K
+
+		if (name.length === 1 && name !== '-') {
+			logicHash['-' + name] = { formalName, negated: false }
 
 		} else {
 			const kebabName = kebabCase(name)
-			kebabNameToFormalName['--' + kebabName] = name
+
+			logicHash['--' + kebabName] = { formalName, negated: false }
+
 			if (kebabName.startsWith('no-')) {
-				kebabNameToFormalName['--' + kebabName.substring(3)] = '!' + name
+				logicHash['--' + kebabName.substring(3)] = { formalName, negated: true }
 
 			} else {
-				kebabNameToFormalName['--no-' + kebabName] = '!' + name
+				logicHash['--no-' + kebabName] = { formalName, negated: true }
 			}
 		}
 	}
 	if (typeof options?.aliases === 'object' && options.aliases !== null) {
-		for (const name in options.aliases) {
-			if (name.length === 1) {
-				kebabNameToFormalName['-' + name] ??= options.aliases[name]
+		for (const aliasName in options.aliases) {
+			const targetName = options.aliases[aliasName]
+			if (typeof targetName !== 'string') {
+				throw new Error(`Expected the right-hand side of the alias to be a string: ${aliasName} → ${targetName}`)
+			}
+
+			const negationOperatorCount = targetName.match(/^\!+/)?.[0].length ?? 0
+			const formalName = targetName.substring(negationOperatorCount)
+			const negated = negationOperatorCount % 2 === 1
+
+			if (!isKnownName(formalName)) {
+				throw new Error(`Expected the right-hand side of the alias to be one of the known names: ${aliasName} → ${targetName}`)
+			}
+
+			if (aliasName.length === 1 && aliasName !== '-') {
+				logicHash['-' + aliasName] ??= { formalName, negated }
 
 			} else {
-				const kebabName = kebabCase(name)
-				kebabNameToFormalName['--' + kebabName] ??= options.aliases[name]
+				const kebabName = kebabCase(aliasName)
+
+				logicHash['--' + kebabName] ??= { formalName, negated }
+
 				if (kebabName.startsWith('no-')) {
-					kebabNameToFormalName['--' + kebabName.substring(3)] ??= '!' + options.aliases[name]
+					logicHash['--' + kebabName.substring(3)] ??= { formalName, negated: !negated }
 
 				} else {
-					kebabNameToFormalName['--no-' + kebabName] ??= '!' + options.aliases[name]
+					logicHash['--no-' + kebabName] ??= { formalName, negated: !negated }
 				}
 			}
 		}
@@ -64,12 +83,11 @@ export function parseArguments<
 				const value = delimiterIndex === -1 ? undefined : raw.substring(delimiterIndex + 1)
 
 				const kebabName = '--' + kebabCase(actualName)
-				if (kebabName in kebabNameToFormalName === false) {
+				if (kebabName in logicHash === false) {
 					throw new Error(`Unexpected an unknown argument: ${raw}`)
 				}
 
-				const formalName = kebabNameToFormalName[kebabName].replace(/^\!*/, '') as K
-				const negated = normalizeNegation(kebabNameToFormalName[kebabName]).startsWith('!')
+				const { formalName, negated } = logicHash[kebabName]
 
 				namedArguments.push({
 					raw,
@@ -83,16 +101,14 @@ export function parseArguments<
 				if (delimiterIndex === -1) {
 					for (const name of raw.substring(1).split('')) {
 						const kebabName = '-' + name
-						if (kebabName in kebabNameToFormalName === false) {
+						if (kebabName in logicHash === false) {
 							throw new Error(`Unexpected an unknown argument: ${raw}`)
 						}
 
-						const formalName = kebabNameToFormalName[kebabName].replace(/^\!*/, '') as K
+						const { formalName, negated } = logicHash[kebabName]
 						if (typeof defaultHash[formalName] !== 'boolean') {
 							throw new Error(`Unexpected the short-hand argument ${raw} which is a non-Boolean`)
 						}
-
-						const negated = normalizeNegation(kebabNameToFormalName[kebabName]).startsWith('!')
 
 						namedArguments.push({
 							raw,
@@ -104,12 +120,11 @@ export function parseArguments<
 
 				} else if (delimiterIndex === 2) {
 					const actualName = raw.substring(0, delimiterIndex)
-					if (actualName in kebabNameToFormalName === false) {
+					if (actualName in logicHash === false) {
 						throw new Error(`Unexpected an unknown argument: ${raw}`)
 					}
 
-					const formalName = kebabNameToFormalName[actualName].replace(/^\!*/, '') as K
-					const negated = normalizeNegation(kebabNameToFormalName[actualName]).startsWith('!')
+					const { formalName, negated } = logicHash[actualName]
 					const value = raw.substring(delimiterIndex + 1)
 
 					namedArguments.push({
@@ -132,7 +147,7 @@ export function parseArguments<
 
 	const outputHash = Object.assign({}, defaultHash) as any
 	for (const { raw, formalName, negated, value, } of namedArguments) {
-		const defaultValue = defaultHash[formalName]
+		const defaultValue: unknown = defaultHash[formalName]
 		if (typeof defaultValue === 'boolean') {
 			const parsedValue = parseBoolean(value, true)
 			outputHash[formalName] = negated ? !parsedValue : parsedValue
@@ -140,7 +155,7 @@ export function parseArguments<
 		} else if (typeof defaultValue === 'number') {
 			if (negated) {
 				if (value) {
-					throw new Error(`Expected ${raw} to supply a numeric value.`)
+					throw new Error(`Unexpected a value when using "no" name prefix: ${raw}`)
 
 				} else {
 					outputHash[formalName] = defaultHash[formalName]
@@ -157,7 +172,7 @@ export function parseArguments<
 				}
 
 			} else if (value === undefined) {
-				throw new Error(`Expected ${raw} to supply a string value.`)
+				throw new Error(`Expected a value: ${raw}`)
 
 			} else {
 				outputHash[formalName] = value
@@ -174,7 +189,7 @@ export function parseArguments<
 
 			} else {
 				if (value === undefined) {
-					throw new Error(`Expected ${raw} to supply a value.`)
+					throw new Error(`Expected a value: ${raw}`)
 				}
 
 				if (outputHash[formalName].includes(value)) {
@@ -203,14 +218,9 @@ export function parseArguments<
 		positionalArguments,
 		{ length: positionalArguments.length }
 	)
-}
 
-function normalizeNegation(text: string) {
-	const count = (text.match(/^\!+/)?.[0] ?? '').length
-	if (count % 2 === 0) {
-		return text.substring(count)
-	} else {
-		return text.substring(count - 1)
+	function isKnownName(name: string): name is K {
+		return name in defaultHash
 	}
 }
 
