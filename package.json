@@ -10,7 +10,9 @@
 	"keywords": [
 		"argv",
 		"parser",
-		"minimist"
+		"optimist",
+		"minimist",
+		"yargs"
 	],
 	"engines": {
 		"node": ">=16.0.0"

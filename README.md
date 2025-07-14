@@ -1,46 +1,56 @@
-```ts
+This is a Node.js library that helps derive `process.argv` array into a flexible, value-strict, TypeScript-friendly object.
+
+```js
 import { parseArguments } from '@thisismanta/pessimist'
 
-const { count, dryRun, outputFileName, ...positionalArguments } =
-parseArguments(
+const { 
+  count, dryRun, outputFileName, 
+  ...positionalArguments
+} = parseArguments(
   process.argv.slice(2), 
   {
+    // Define the default values
     count: 0,
     dryRun: false,
     outputFileName: '',
     exclude: [],
+  },
+  {
+    // Define the special treatments
+    aliases: { d: 'dryRun' },
+    exclusives: [['dryRun', 'outputFileName']],
   }
 )
 
 for (const item of Array.from(positionalArguments)) {
-  // ...
+  // Consume your positional argument here
 }
 ```
 
-```
+```sh
 file1 file2 --count=3 --output-file-name=file3
 ```
 
-```ts
+```js
 {
+  // From the named arguments
+  outputFileName: 'file3',
+  dryRun: true,
+
   // From the positional arguments
   '0': 'file1', 
   '1': 'file2',
   length: 2,
 
-  // From the named arguments
-  outputFileName: 'file3',
-  dryRun: true,
-
-  // From the defaults
+  // From the default values
   count: 0,
   exclude: [],
 }
 ```
 
-### Unknown field rejection
+## Rejecting unknown inputs
 
-The below commands exit with non-zero code as `somethingElse` is **not defined** in the default object (the second parameter of `parseArguments` function).
+The below command argument exits with **non-zero code** because `somethingElse` is **not defined** in the default object (the second parameter of `parseArguments` function).
 
 ```sh
 --something-else
@@ -49,18 +59,16 @@ The below commands exit with non-zero code as `somethingElse` is **not defined**
 
 Therefore it is **important** to have all the possible field-value arguments defined in the default object.
 
-### Auto camel-case conversion
+## Auto converting argument names from _dash-case_ to _camelCase_
 
-The below commands yield the same output because `dry-run` is transformed into a camel case.
+The below command arguments are the same because `dry-run` is transformed into a camel case.
 
 ```sh
 --dryRun  # { dryRun: true }
 --dry-run # { dryRun: true }
 ```
 
-### False-like Boolean recognition
-
-The below commands yield the same output.
+## Auto converting false-like values
 
 ```sh
 --dryRun=false # { dryRun: false }
@@ -71,7 +79,7 @@ The below commands yield the same output.
 --dryRun=0
 ```
 
-### Negation and clearance
+## Supporting `no` name prefix
 
 Having `no` argument prefix negates the Boolean value.
 
@@ -95,39 +103,48 @@ Having `no` argument prefix for an array removes the given value from the output
 # { exclude: ['file2'] }
 ```
 
-### Duplicate-free guarantee
+## Auto removing duplicate values
 
 ```sh
 --exclude=file1 --exclude=file2 --exclude=file1
 # { input: ['file2', 'file1'] }
 ```
 
-### Field aliases
+Note that, unlike [`_.uniq([...])`](https://lodash.com/docs/4.17.15#uniq) and `new Set([...])`, the order is sorted where the most recent value will appear at the end of the array.
 
-```ts
+## Supporting name aliases
+
+```js
 parseArguments(
   process.argv.slice(2), 
-  { dryRun: false },
-  { aliases: { d: 'dryRun', commit: '!dryRun' } }
+  {
+    dryRun: false
+  },
+  {
+    aliases: {
+      d: 'dryRun',
+      commit: '!dryRun'
+    }
+  }
 )
 ```
 
 ```sh
-node myfile --dryRun # { dryRun: true }
-node myfile -d       # { dryRun: true }
+--dryRun # { dryRun: true }
+-d       # { dryRun: true }
 ```
 
-However, the below commands yield the opposite outputs because `!` prefix negates the value from `commit`.
+However, the below command arguments are the opposite because the `!` operator negates the value as defined in `commit` alias.
 
 ```sh
-node myfile --commit    # { dryRun: false }
-node myfile --noCommit  # { dryRun: true }
-node myfile --no-commit # { dryRun: true }
+--commit    # { dryRun: false }
+--noCommit  # { dryRun: true }
+--no-commit # { dryRun: true }
 ```
 
-### Mutual exclusive fields
+## Rejecting mutual exclusive names
 
-```ts
+```js
 parseArguments(
   process.argv.slice(2), 
   {
