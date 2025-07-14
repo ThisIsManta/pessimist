@@ -4,7 +4,7 @@ This is a Node.js library that helps derive `process.argv` array into a flexible
 import { parseArguments } from '@thisismanta/pessimist'
 
 const { 
-  count, dryRun, outputFileName, 
+  count, dryRun, outputFile, 
   ...positionalArguments
 } = parseArguments(
   process.argv.slice(2), 
@@ -12,13 +12,13 @@ const {
     // Define the default values
     count: 0,
     dryRun: false,
-    outputFileName: '',
+    outputFile: '',
     exclude: [],
   },
   {
     // Define the special treatments
     aliases: { d: 'dryRun' },
-    exclusives: [['dryRun', 'outputFileName']],
+    exclusives: [['dryRun', 'outputFile']],
   }
 )
 
@@ -28,14 +28,15 @@ for (const item of Array.from(positionalArguments)) {
 ```
 
 ```sh
-file1 file2 --count=3 --output-file-name=file3
+--count=3 -d --output-file-name=file3 file1 file2 
 ```
 
 ```js
 {
   // From the named arguments
-  outputFileName: 'file3',
+  count: 3,
   dryRun: true,
+  outputFile: 'file3',
 
   // From the positional arguments
   '0': 'file1', 
@@ -43,7 +44,6 @@ file1 file2 --count=3 --output-file-name=file3
   length: 2,
 
   // From the default values
-  count: 0,
   exclude: [],
 }
 ```
@@ -92,8 +92,8 @@ Having `no` argument prefix negates the Boolean value.
 Having `no` argument prefix clears the string value.
 
 ```sh
---noOutputFileName    # { outputFileName: '' }
---no-output-file-name # { outputFileName: '' }
+--noOutputFile    # { outputFile: '' }
+--no-output-file  # { outputFile: '' }
 ```
 
 Having `no` argument prefix for an array removes the given value from the output array.
@@ -142,6 +142,27 @@ However, the below command arguments are the opposite because the `!` operator n
 --no-commit # { dryRun: true }
 ```
 
+## Supporting single-letter short-hand arguments
+
+```js
+parseArguments(
+  process.argv.slice(2), 
+  {
+    verbose: false,
+    f: false,
+  },
+  {
+    aliases: {
+      v: 'verbose',
+    }
+  }
+)
+```
+
+```sh
+-vf # { verbose: true, f: true }
+```
+
 ## Rejecting mutual exclusive names
 
 ```js
@@ -149,15 +170,15 @@ parseArguments(
   process.argv.slice(2), 
   {
     dryRun: false,
-    confirmed: true,
+    commit: true,
   },
   {
-    exclusives: [['dryRun', 'confirmed'], ...],
+    exclusives: [['dryRun', 'commit'], ...],
   }
 )
 ```
 
 ```sh
---dryRun --confirmed
-# Error: Unexpected mutual exclusive arguments: --dryRun --confirmed
+--dryRun --commit
+# Error: Unexpected mutual exclusive arguments: --dryRun --commit
 ```
