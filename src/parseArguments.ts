@@ -177,7 +177,7 @@ export function parseArguments<
 					throw new Error(`Expected ${raw} to supply a value.`)
 				}
 
-				if ((outputHash[formalName] as Array<string>).includes(value)) {
+				if (outputHash[formalName].includes(value)) {
 					outputHash[formalName] = difference(outputHash[formalName], [value])
 				}
 
@@ -191,7 +191,7 @@ export function parseArguments<
 		const formalNameToRaw = Object.fromEntries(namedArguments.map(({ formalName, raw }) => [formalName, raw]))
 
 		for (const group of options.exclusives) {
-			const intersections = intersect(group as Array<string>, inputFormalNames)
+			const intersections = intersect(group, inputFormalNames)
 			if (intersections.length > 1) {
 				throw new Error('Unexpected mutual exclusive arguments: ' + intersections.map(field => formalNameToRaw[field]).join(' '))
 			}
