@@ -28,7 +28,7 @@
 		"build": "tsc",
 		"test": "tsc --noEmit && vitest --coverage.enabled --coverage.thresholds.100 --coverage.include src --coverage.exclude src/index.ts",
 		"preversion": "npm run build",
-		"version": "npm publish --access public"
+		"version": "npm publish --provenance --access public"
 	},
 	"devDependencies": {
 		"@thisismanta/semantic-version": "^9.1.4",
