@@ -5,7 +5,7 @@
 	"license": "ISC",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ThisIsManta/pessimist.git"
+		"url": "git+https://github.com/ThisIsManta/pessimist.git"
 	},
 	"keywords": [
 		"argv",
@@ -17,6 +17,7 @@
 	"engines": {
 		"node": ">=16.0.0"
 	},
+	"packageManager": "npm@11.6.2",
 	"main": "index.js",
 	"types": "index.d.ts",
 	"files": [
@@ -25,19 +26,19 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"test": "tsc --noEmit && vitest run --coverage.enabled --coverage.thresholds.100 --coverage.include src --coverage.exclude src/index.ts",
+		"test": "tsc --noEmit && vitest --coverage.enabled --coverage.thresholds.100 --coverage.include src --coverage.exclude src/index.ts",
 		"preversion": "npm run build",
 		"version": "npm publish --access public"
 	},
 	"devDependencies": {
-		"@thisismanta/semantic-version": "^9.1.2",
-		"@types/lodash": "^4.17.20",
+		"@thisismanta/semantic-version": "^9.1.4",
+		"@types/lodash": "^4.17.23",
 		"@vitest/coverage-v8": "^3.2.4",
-		"lefthook": "^1.12.2",
-		"typescript": "^5.8.3",
+		"lefthook": "^2.0.15",
+		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
-		"lodash": "^4.17.21"
+		"lodash": "^4.17.23"
 	}
 }

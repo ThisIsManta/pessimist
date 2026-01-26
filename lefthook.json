@@ -3,7 +3,7 @@
 		"parallel": true,
 		"commands": {
 			"test": {
-				"run": "npm run test -- --silent"
+				"run": "npm run test -- run --silent"
 			},
 			"build": {
 				"run": "npm run build -- --noEmit"
