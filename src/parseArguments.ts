@@ -1,8 +1,6 @@
 import kebabCase from 'lodash/kebabCase'
 import { parseBoolean } from './parseBoolean'
 
-export type Hash = { [field: string]: boolean | number | string | Array<string> }
-
 export function parseArguments<
 	K extends string & keyof T,
 	T = { [key: string]: boolean | number | string | Array<string> },
@@ -10,27 +8,37 @@ export function parseArguments<
 	inputs: Array<string>,
 	defaultHash: Readonly<T>,
 	options?: Partial<{
+		/**
+		 * A mapping of aliases to formal names.
+		 * @example
+		 * { d: 'dryRun', o: 'outFile' }
+		 */
 		aliases: Record<string, K | `!${K}`>,
+		/**
+		 * A list of mutually exclusive argument groups. If more than one argument from the same group is present, an error will be thrown.
+		 * @example
+		 * [['dryRun', 'commit'], ['outFile', 'outDir']]
+		 */
 		exclusives: Array<Array<K>>,
 	}>
 ): T & ArrayLike<string> {
-	const logicHash: Record<string, { formalName: K, negated: boolean }> = {}
+	const logicalHash: Record<string, { formalName: K, negated: boolean }> = {}
 	for (const name in defaultHash) {
 		const formalName = name as string as K
 
 		if (name.length === 1 && name !== '-') {
-			logicHash['-' + name] = { formalName, negated: false }
+			logicalHash['-' + name] = { formalName, negated: false }
 
 		} else {
 			const kebabName = kebabCase(name)
 
-			logicHash['--' + kebabName] = { formalName, negated: false }
+			logicalHash['--' + kebabName] = { formalName, negated: false }
 
 			if (kebabName.startsWith('no-')) {
-				logicHash['--' + kebabName.substring(3)] = { formalName, negated: true }
+				logicalHash['--' + kebabName.substring(3)] = { formalName, negated: true }
 
 			} else {
-				logicHash['--no-' + kebabName] = { formalName, negated: true }
+				logicalHash['--no-' + kebabName] = { formalName, negated: true }
 			}
 		}
 	}
@@ -50,18 +58,18 @@ export function parseArguments<
 			}
 
 			if (aliasName.length === 1 && aliasName !== '-') {
-				logicHash['-' + aliasName] ??= { formalName, negated }
+				logicalHash['-' + aliasName] ??= { formalName, negated }
 
 			} else {
 				const kebabName = kebabCase(aliasName)
 
-				logicHash['--' + kebabName] ??= { formalName, negated }
+				logicalHash['--' + kebabName] ??= { formalName, negated }
 
 				if (kebabName.startsWith('no-')) {
-					logicHash['--' + kebabName.substring(3)] ??= { formalName, negated: !negated }
+					logicalHash['--' + kebabName.substring(3)] ??= { formalName, negated: !negated }
 
 				} else {
-					logicHash['--no-' + kebabName] ??= { formalName, negated: !negated }
+					logicalHash['--no-' + kebabName] ??= { formalName, negated: !negated }
 				}
 			}
 		}
@@ -74,20 +82,64 @@ export function parseArguments<
 		value: string | undefined
 	}
 
-	const [positionalArguments, namedArguments] = inputs
-		.filter(input => /^-+$/.test(input) === false)
-		.reduce(([positionalArguments, namedArguments]: [Array<string>, Array<NamedInput>], raw) => {
-			if (raw.startsWith('--')) {
-				const delimiterIndex = raw.indexOf('=')
-				const actualName = delimiterIndex === -1 ? raw : raw.substring(0, delimiterIndex)
-				const value = delimiterIndex === -1 ? undefined : raw.substring(delimiterIndex + 1)
+	const namedArguments: Array<NamedInput> = []
+	const positionalArguments: Array<string> = []
+	for (const raw of inputs) {
+		if (/^-+$/.test(raw)) {
+			continue
 
-				const kebabName = '--' + kebabCase(actualName)
-				if (kebabName in logicHash === false) {
+		} else if (raw.startsWith('--')) {
+			const delimiter = raw.indexOf('=')
+			const actualName = delimiter === -1 ? raw : raw.substring(0, delimiter)
+
+			const kebabName = '--' + kebabCase(actualName)
+			if (kebabName in logicalHash === false) {
+				throw new Error(`Unexpected an unknown argument: ${raw}`)
+			}
+
+			const { formalName, negated } = logicalHash[kebabName]
+
+			const value = delimiter === -1 ? undefined : raw.substring(delimiter + 1)
+
+			namedArguments.push({
+				raw,
+				formalName,
+				negated,
+				value,
+			})
+
+		} else if (raw.startsWith('-')) {
+			const delimiter = raw.indexOf('=')
+			if (delimiter === -1) {
+				for (const name of raw.substring(1).split('')) {
+					const kebabName = '-' + name
+					if (kebabName in logicalHash === false) {
+						throw new Error(`Unexpected an unknown argument: ${raw}`)
+					}
+
+					const { formalName, negated } = logicalHash[kebabName]
+
+					if (typeof defaultHash[formalName] !== 'boolean') {
+						throw new Error(`Unexpected the short-hand argument ${raw} which is a non-Boolean`)
+					}
+
+					namedArguments.push({
+						raw,
+						formalName,
+						negated,
+						value: undefined,
+					})
+				}
+
+			} else if (delimiter === 2) {
+				const actualName = raw.substring(0, delimiter)
+				if (actualName in logicalHash === false) {
 					throw new Error(`Unexpected an unknown argument: ${raw}`)
 				}
 
-				const { formalName, negated } = logicHash[kebabName]
+				const { formalName, negated } = logicalHash[actualName]
+
+				const value = raw.substring(delimiter + 1)
 
 				namedArguments.push({
 					raw,
@@ -96,54 +148,14 @@ export function parseArguments<
 					value,
 				})
 
-			} else if (raw.startsWith('-')) {
-				const delimiterIndex = raw.indexOf('=')
-				if (delimiterIndex === -1) {
-					for (const name of raw.substring(1).split('')) {
-						const kebabName = '-' + name
-						if (kebabName in logicHash === false) {
-							throw new Error(`Unexpected an unknown argument: ${raw}`)
-						}
-
-						const { formalName, negated } = logicHash[kebabName]
-						if (typeof defaultHash[formalName] !== 'boolean') {
-							throw new Error(`Unexpected the short-hand argument ${raw} which is a non-Boolean`)
-						}
-
-						namedArguments.push({
-							raw,
-							formalName,
-							negated,
-							value: undefined,
-						})
-					}
-
-				} else if (delimiterIndex === 2) {
-					const actualName = raw.substring(0, delimiterIndex)
-					if (actualName in logicHash === false) {
-						throw new Error(`Unexpected an unknown argument: ${raw}`)
-					}
-
-					const { formalName, negated } = logicHash[actualName]
-					const value = raw.substring(delimiterIndex + 1)
-
-					namedArguments.push({
-						raw,
-						formalName,
-						negated,
-						value,
-					})
-
-				} else {
-					throw new Error(`Unexpected an unknown argument: ${raw}`)
-				}
-
 			} else {
-				positionalArguments.push(raw)
+				throw new Error(`Unexpected an unknown argument: ${raw}`)
 			}
 
-			return [positionalArguments, namedArguments]
-		}, [[], []])
+		} else {
+			positionalArguments.push(raw)
+		}
+	}
 
 	const outputHash = Object.assign({}, defaultHash) as any
 	for (const { raw, formalName, negated, value, } of namedArguments) {

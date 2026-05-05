@@ -1,23 +1,24 @@
-This is a Node.js library that helps derive `process.argv` array into a flexible, value-strict, TypeScript-friendly object.
+This is a Node.js library that helps derive `process.argv` into a first-hand-**TypeScript** value-strict object with very minimal configurations.
 
 ```js
 import { parseArguments } from '@thisismanta/pessimist'
 
-const { 
+const {
+  // Types are derived from the default values supplied below
   count, dryRun, outputFile, 
   ...positionalArguments
-} = parseArguments(
-  process.argv.slice(2), 
+} = parseArguments(process.argv.slice(2),
   {
-    // Define the default values
+    // Define your all possible arguments and their default values here
     count: 0,
     dryRun: false,
     outputFile: '',
-    exclude: [],
+    exclude: [] as string[],
   },
   {
-    // Define the special treatments
+    // Forward -d to --dryRun (optional)
     aliases: { d: 'dryRun' },
+    // Disallow both --dryRun and --outputFile to be supplied at the same time
     exclusives: [['dryRun', 'outputFile']],
   }
 )
@@ -30,6 +31,8 @@ for (const item of Array.from(positionalArguments)) {
 ```sh
 --count=3 -d --output-file-name=file3 file1 file2 
 ```
+
+The above example results in the below object:
 
 ```js
 {
@@ -48,7 +51,7 @@ for (const item of Array.from(positionalArguments)) {
 }
 ```
 
-## Rejecting unknown inputs
+## Rejecting unknown arguments
 
 The below command argument exits with **non-zero code** because `somethingElse` is **not defined** in the default object (the second parameter of `parseArguments` function).
 
@@ -57,7 +60,7 @@ The below command argument exits with **non-zero code** because `somethingElse` 
 # Error: Unexpected an unknown argument: --something-else
 ```
 
-Therefore it is **important** to have all the possible field-value arguments defined in the default object.
+⚠️ Therefore it is **important** to have all the possible arguments defined in the default object.
 
 ## Auto converting argument names from _dash-case_ to _camelCase_
 
@@ -79,7 +82,7 @@ The below command arguments are the same because `dry-run` is transformed into a
 --dryRun=0
 ```
 
-## Supporting `no` name prefix
+## Auto negating through `no` name prefix
 
 Having `no` argument prefix negates the Boolean value.
 
@@ -110,7 +113,7 @@ Having `no` argument prefix for an array removes the given value from the output
 # { input: ['file2', 'file1'] }
 ```
 
-Note that, unlike [`_.uniq([...])`](https://lodash.com/docs/4.17.15#uniq) and `new Set([...])`, the order is sorted where the most recent value will appear at the end of the array.
+Notice that `'file1'` comes after `'file2'` because it appears on the rightmost in the argument.
 
 ## Supporting name aliases
 
@@ -134,7 +137,7 @@ parseArguments(
 -d       # { dryRun: true }
 ```
 
-However, the below command arguments are the opposite because the `!` operator negates the value as defined in `commit` alias.
+However, the below command arguments yield the opposite because of the `!` operator defined in `commit` alias above.
 
 ```sh
 --commit    # { dryRun: false }

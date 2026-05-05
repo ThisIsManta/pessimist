@@ -27,7 +27,7 @@ it('returns the named arguments and the positional arguments', () => {
 	expect(Array.from(positionalArguments)).toEqual(['data.yml', 'data.json'])
 })
 
-it('does not return "--"', () => {
+it('does not return any sparse dashes', () => {
 	expect(parseArguments(
 		['-'],
 		{}
@@ -334,7 +334,7 @@ describe('String', () => {
 
 describe('Array<String>', () => {
 	it('returns the given unique items cumulatively', () => {
-		const defaults = { input: [] }
+		const defaults = { input: [] as Array<string> }
 
 		expect(parseArguments(
 			['--input=dream'],
