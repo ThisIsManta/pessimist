@@ -31,7 +31,7 @@ it('returns true, given a non-zero number', () => {
 })
 
 it.for([
-	'false', 'False', 'FaLsE', 'FALSE', '0', 'n', 'no', 'off',
+	'false', 'False', 'FaLsE', 'FALSE', 'F', 'f', '0', 'n', 'no', 'off',
 ])('returns false, given %s', (value) => {
 	expect(parseBoolean(value)).toBe(false)
 })

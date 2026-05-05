@@ -1,4 +1,4 @@
-const known = Object.fromEntries('false|0|n|no|off'.split('|').map(item => [item, false] as const))
+const known = Object.fromEntries('false|f|0|n|no|off'.split('|').map(item => [item, false] as const))
 
 /**
  * Returns a Boolean derived from the given value.
@@ -12,6 +12,7 @@ const known = Object.fromEntries('false|0|n|no|off'.split('|').map(item => [item
  * parseBoolean(0) // false
  * parseBoolean('0') // false
  * parseBoolean('') // false
+ * parseBoolean('F') // false
  * parseBoolean('false') // false
  * parseBoolean('n') // false
  * parseBoolean('no') // false
