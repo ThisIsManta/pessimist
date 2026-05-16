@@ -1,7 +1,5 @@
 {
 	"compilerOptions": {
-		"rootDir": "./src",
-		"outDir": "../",
 		"target": "ES2020",
 		"module": "CommonJS",
 		"esModuleInterop": true,
@@ -11,6 +9,7 @@
 		"declaration": true
 	},
 	"exclude": [
-		"*.test.*"
+		"*.test.*",
+		"coverage"
 	]
 }

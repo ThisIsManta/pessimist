@@ -25,8 +25,8 @@
 		"*.d.ts"
 	],
 	"scripts": {
-		"build": "tsc",
-		"test": "tsc --noEmit && vitest --coverage.enabled --coverage.thresholds.statements 100 --coverage.include src --coverage.exclude src/index.ts",
+		"build": "rm -f *.js *.d.ts && tsc",
+		"test": "npm run build -- --noEmit && vitest --coverage.enabled --coverage.thresholds.statements 100",
 		"version": "npm run build",
 		"postversion": "npm publish --provenance --access public"
 	},
